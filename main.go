@@ -64,8 +64,10 @@ func InitDatabase() *gorm.DB {
 }
 func InitUser(db *gorm.DB) *web.UserHandler {
 	ud := dao.NewUserDao(db)
-	repo := repository.NewUserRepository(ud)
-	svc := service.NewUserService(repo)
+	udd := dao.NewUserDetailDao(db)
+	userRepo := repository.NewUserRepository(ud)
+	userDetailRepo := repository.NewUserDetailRepository(udd)
+	svc := service.NewUserService(userRepo, userDetailRepo)
 	u := web.NewUserHandler(svc)
 	return u
 }

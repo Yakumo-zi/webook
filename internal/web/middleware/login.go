@@ -30,7 +30,7 @@ func (l *LoginMiddlewareBuilder) Build() gin.HandlerFunc {
 		if _, ok := l.paths[ctx.Request.URL.String()]; ok {
 			return
 		}
-		id := session.Get("id")
+		id := session.Get("userID")
 		if id == nil {
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return

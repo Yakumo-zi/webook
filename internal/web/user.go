@@ -14,14 +14,20 @@ type UserHandler struct {
 	svc            *service.UserService
 	emailRegexp    *regex.Regexp
 	passwordRegexp *regex.Regexp
+	userRegexp     *regex.Regexp
+	dateRegexp     *regex.Regexp
 }
 
 func NewUserHandler(svc *service.UserService) *UserHandler {
 	emailRegexp := regex.MustCompile("^[a-zA-Z0-9_.-]+@[a-zA-Z0-9-]+(\\.[a-zA-Z0-9-]+)*\\.[a-zA-Z0-9]{2,6}$", 0)
 	passwordRegexp := regex.MustCompile("^(?=.*\\d)(?=.*[a-zA-Z])(?=.*[^\\da-zA-Z\\s]).{6,18}$", 0)
+	userRegexp := regex.MustCompile(`^[a-zA-Z0-9_-]{6,12}$`, 0)
+	dateRegexp := regex.MustCompile(`^(?:(?!0000)[0-9]{4}-(?:(?:0[1-9]|1[0-2])-(?:0[1-9]|1[0-9]|2[0-8])|(?:0[13-9]|1[0-2])-(?:29|30)|(?:0[13578]|1[02])-31)|(?:[0-9]{2}(?:0[48]|[2468][048]|[13579][26])|(?:0[48]|[2468][048]|[13579][26])00)-02-29)$`, 0)
 	return &UserHandler{
 		emailRegexp:    emailRegexp,
 		passwordRegexp: passwordRegexp,
+		userRegexp:     userRegexp,
+		dateRegexp:     dateRegexp,
 		svc:            svc,
 	}
 }
@@ -49,7 +55,7 @@ func (u *UserHandler) Login(ctx *gin.Context) {
 		return
 	}
 	session := sessions.Default(ctx)
-	session.Set("userId", user.Id)
+	session.Set("userID", user.ID)
 	session.Save()
 	ctx.String(http.StatusOK, "登录成功")
 }
@@ -101,8 +107,81 @@ func (u *UserHandler) SignUp(ctx *gin.Context) {
 	ctx.String(http.StatusOK, "注册成功")
 }
 func (u *UserHandler) Profile(ctx *gin.Context) {
+	type ProfileResp struct {
+		Email        string `json:"email"`
+		NickName     string `json:"nickName"`
+		Avatar       string `json:"avatar"`
+		Introduction string `json:"introduction"`
+		Birthday     string `json:"birthday"`
+	}
+	session := sessions.Default(ctx)
+	id := session.Get("userID").(int64)
+	user, err := u.svc.Profile(ctx, id)
+	if err != nil {
+		ctx.String(http.StatusOK, "系统错误")
+		return
+	}
+	resp := ProfileResp{
+		Email:        user.Email,
+		NickName:     user.NickName,
+		Avatar:       user.Avatar,
+		Introduction: user.Introduction,
+		Birthday:     user.Birthday,
+	}
+	ctx.JSON(http.StatusOK, resp)
 
 }
 func (u *UserHandler) Edit(ctx *gin.Context) {
-
+	type EditReq struct {
+		NickName     string `json:"nickName"`
+		Avatar       string `json:"avatar"`
+		Introduction string `json:"introduction"`
+		Birthday     string `json:"birthday"`
+	}
+	var req EditReq
+	if err := ctx.Bind(&req); err != nil {
+		return
+	}
+	if len(req.NickName) == 0 {
+		ctx.String(http.StatusOK, "昵称不能为空")
+		return
+	}
+	isMatch, err := u.userRegexp.MatchString(req.NickName)
+	if err != nil {
+		ctx.String(http.StatusOK, "系统错误")
+		return
+	}
+	if !isMatch {
+		ctx.String(http.StatusOK, "昵称必须为6-12个字符，且不能包含特殊字符")
+		return
+	}
+	if len([]rune(req.Introduction)) > 255 {
+		ctx.String(http.StatusOK, "个人介绍不能多于255个字符")
+		return
+	}
+	if len(req.Birthday) != 0 {
+		isMatch, err = u.dateRegexp.MatchString(req.Birthday)
+		if err != nil {
+			ctx.String(http.StatusOK, "系统错误")
+			return
+		}
+		if !isMatch {
+			ctx.String(http.StatusOK, "生日必须为有效日期，日期格式如下：2006-10-10")
+			return
+		}
+	}
+	session := sessions.Default(ctx)
+	id := session.Get("userID")
+	err = u.svc.Edit(ctx, domain.User{
+		ID:           id.(int64),
+		NickName:     req.NickName,
+		Avatar:       req.Avatar,
+		Introduction: req.Introduction,
+		Birthday:     req.Birthday,
+	})
+	if err != nil {
+		ctx.String(http.StatusOK, "系统错误")
+		return
+	}
+	ctx.String(http.StatusOK, "修改成功")
 }
