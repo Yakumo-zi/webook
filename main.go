@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"webook/internal/service"
 	"webook/internal/web"
 	"webook/internal/web/middleware"
+	"webook/pkg/ginx/ratelimit"
 )
 
 func main() {
@@ -57,6 +59,13 @@ func InitServer() *gin.Engine {
 	//server.Use(sessions.Sessions("mysession", store))
 	//server.Use(middleware.NewLoginMiddlewareBuilder().IgnorePath("/users/login", "/users/signup").Build())
 	server.Use(middleware.NewLoginJWTMiddlewareBuilder().IgnorePath("/users/login", "/users/signup").Build())
+	cmd := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "",
+		DB:       1,
+	})
+	// 接入限流中间件
+	server.Use(ratelimit.NewBuilder(cmd, time.Minute, 100).Build())
 	return server
 }
 func InitDatabase() *gorm.DB {
