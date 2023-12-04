@@ -2,12 +2,13 @@ package web
 
 import (
 	"errors"
+	"github.com/golang-jwt/jwt/v5"
 	"net/http"
+	"time"
 	"webook/internal/domain"
 	"webook/internal/service"
 
 	regex "github.com/dlclark/regexp2"
-	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
 
@@ -55,13 +56,29 @@ func (u *UserHandler) Login(ctx *gin.Context) {
 		ctx.String(http.StatusOK, "账号/邮箱或密码错误")
 		return
 	}
-	session := sessions.Default(ctx)
-	session.Set("userID", user.ID)
-	err = session.Save()
+
+	// 使用 session 进行身份验证
+	//session := sessions.Default(ctx)
+	//session.Set("userID", user.ID)
+	//err = session.Save()
+	//if err != nil {
+	//	ctx.String(http.StatusInternalServerError, "系统错误")
+	//	return
+	//}
+
+	// 使用 jwt 进行身份验证
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &UserClaims{
+		Uid: user.ID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute)),
+		},
+	})
+	tokenStr, err := token.SignedString([]byte("xbcbtlzWUNZfXzmXvnLdpQnoIFRegaUK"))
 	if err != nil {
 		ctx.String(http.StatusInternalServerError, "系统错误")
 		return
 	}
+	ctx.Header("x-jwt-token", tokenStr)
 	ctx.String(http.StatusOK, "登录成功")
 }
 func (u *UserHandler) SignUp(ctx *gin.Context) {
@@ -119,9 +136,11 @@ func (u *UserHandler) Profile(ctx *gin.Context) {
 		Introduction string `json:"introduction"`
 		Birthday     string `json:"birthday"`
 	}
-	session := sessions.Default(ctx)
-	id := session.Get("userID").(int64)
-	user, err := u.svc.Profile(ctx, id)
+	//session := sessions.Default(ctx)
+	//id := session.Get("userID").(int64)
+
+	id, _ := ctx.Get("userID")
+	user, err := u.svc.Profile(ctx, id.(int64))
 	if err != nil {
 		ctx.String(http.StatusOK, "系统错误")
 		return
@@ -175,8 +194,10 @@ func (u *UserHandler) Edit(ctx *gin.Context) {
 			return
 		}
 	}
-	session := sessions.Default(ctx)
-	id := session.Get("userID")
+	//session := sessions.Default(ctx)
+	//id := session.Get("userID"
+
+	id, _ := ctx.Get("userID")
 	err = u.svc.Edit(ctx, domain.User{
 		ID:           id.(int64),
 		NickName:     req.NickName,
@@ -189,4 +210,9 @@ func (u *UserHandler) Edit(ctx *gin.Context) {
 		return
 	}
 	ctx.String(http.StatusOK, "修改成功")
+}
+
+type UserClaims struct {
+	jwt.RegisteredClaims
+	Uid int64 `json:"uid"`
 }

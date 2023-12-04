@@ -1,7 +1,10 @@
 package main
 
 import (
-	"github.com/gin-contrib/sessions/redis"
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 	"strings"
 	"time"
 	"webook/internal/repository"
@@ -9,12 +12,6 @@ import (
 	"webook/internal/service"
 	"webook/internal/web"
 	"webook/internal/web/middleware"
-
-	"github.com/gin-contrib/cors"
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-gonic/gin"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
 )
 
 func main() {
@@ -42,8 +39,8 @@ func InitServer() *gin.Engine {
 		// 不主动设置表示允许简单方法
 		// AllowMethods:     []string{"PUT", "PATCH"},
 		AllowHeaders: []string{"Content-Type", "Authorization"},
-		// 设置允许前端读那些header
-		ExposeHeaders:    []string{},
+		// 设置允许前端读那些header,没有在这里面声明的 header 前端是无法拿到的
+		ExposeHeaders:    []string{"x-jwt-token"},
 		AllowCredentials: true,
 		AllowOriginFunc: func(origin string) bool {
 			if strings.HasPrefix(origin, "http://localhost") {
@@ -53,14 +50,13 @@ func InitServer() *gin.Engine {
 		},
 		MaxAge: 12 * time.Hour,
 	}))
+	// 使用 cookie 存放 session
 	//store := cookie.NewStore([]byte("secret"))
 	// 使用 redis 存放 session
-	store, _ := redis.NewStore(16, "tcp", "localhost:6379", "", []byte("xbcbtlzWUNZfXzmXvnLdpQnoIFRegaUK"), []byte("asUfpYzKvPCEDJFEPWPTcXoaaFhMVKMy"))
-	server.Use(sessions.Sessions("mysession", store))
-	server.Use(middleware.
-		NewLoginMiddlewareBuilder().
-		IgnorePath("/users/login", "/users/signup").
-		Build())
+	//store, _ := redis.NewStore(16, "tcp", "localhost:6379", "", []byte("xbcbtlzWUNZfXzmXvnLdpQnoIFRegaUK"), []byte("asUfpYzKvPCEDJFEPWPTcXoaaFhMVKMy"))
+	//server.Use(sessions.Sessions("mysession", store))
+	//server.Use(middleware.NewLoginMiddlewareBuilder().IgnorePath("/users/login", "/users/signup").Build())
+	server.Use(middleware.NewLoginJWTMiddlewareBuilder().IgnorePath("/users/login", "/users/signup").Build())
 	return server
 }
 func InitDatabase() *gorm.DB {

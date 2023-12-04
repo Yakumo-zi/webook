@@ -28,10 +28,10 @@ func (l *LoginMiddlewareBuilder) IgnorePath(paths ...string) *LoginMiddlewareBui
 func (l *LoginMiddlewareBuilder) Build() gin.HandlerFunc {
 	gob.Register(time.Time{})
 	return func(ctx *gin.Context) {
-		session := sessions.Default(ctx)
 		if _, ok := l.paths[ctx.Request.URL.String()]; ok {
 			return
 		}
+		session := sessions.Default(ctx)
 		id := session.Get("userID")
 		if id == nil {
 			ctx.AbortWithStatus(http.StatusUnauthorized)
