@@ -51,6 +51,11 @@ func (l *LoginJWTMiddlewareBuilder) Build() gin.HandlerFunc {
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
+		// 增强系统安全性，当 token 不是同一设备使用时 认为没有登录
+		if uc.UserAgent != ctx.Request.UserAgent() {
+			ctx.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
 		expireTime, err := uc.GetExpirationTime()
 		if err != nil {
 			ctx.AbortWithStatus(http.StatusUnauthorized)

@@ -68,7 +68,8 @@ func (u *UserHandler) Login(ctx *gin.Context) {
 
 	// 使用 jwt 进行身份验证
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &UserClaims{
-		Uid: user.ID,
+		Uid:       user.ID,
+		UserAgent: ctx.Request.UserAgent(),
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute)),
 		},
@@ -214,5 +215,6 @@ func (u *UserHandler) Edit(ctx *gin.Context) {
 
 type UserClaims struct {
 	jwt.RegisteredClaims
-	Uid int64 `json:"uid"`
+	Uid       int64  `json:"uid"`
+	UserAgent string `json:"userAgent"`
 }

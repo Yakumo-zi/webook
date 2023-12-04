@@ -23,7 +23,7 @@ func main() {
 	u := InitUser(db)
 
 	u.RegisterRoutes(server)
-	err := server.Run(":8080")
+	err := server.Run(":8180")
 	if err != nil {
 		panic(err)
 	}
@@ -60,7 +60,7 @@ func InitServer() *gin.Engine {
 	//server.Use(middleware.NewLoginMiddlewareBuilder().IgnorePath("/users/login", "/users/signup").Build())
 	server.Use(middleware.NewLoginJWTMiddlewareBuilder().IgnorePath("/users/login", "/users/signup").Build())
 	cmd := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
+		Addr:     "webook-redis:16379",
 		Password: "",
 		DB:       1,
 	})
@@ -69,7 +69,7 @@ func InitServer() *gin.Engine {
 	return server
 }
 func InitDatabase() *gorm.DB {
-	db, err := gorm.Open(mysql.Open("root:root@tcp(localhost:13306)/webook"))
+	db, err := gorm.Open(mysql.Open("root:root@tcp(webook-mysql:13308)/webook"))
 	if err != nil {
 		panic(err)
 	}
