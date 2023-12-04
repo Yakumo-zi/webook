@@ -7,6 +7,10 @@ services:
     environment:
       - MYSQL_ROOT_PASSWORD=root
     ports:
-      - 13306:3306
+      - "13306:3306"
     volumes:
       - ./script/mysql/:/docker-entrypoint-initdb.d
+  redis:
+    image: "redis:latest"
+    ports:
+      - "6379:6379"

@@ -1,6 +1,7 @@
 package web
 
 import (
+	"errors"
 	"net/http"
 	"webook/internal/domain"
 	"webook/internal/service"
@@ -56,7 +57,11 @@ func (u *UserHandler) Login(ctx *gin.Context) {
 	}
 	session := sessions.Default(ctx)
 	session.Set("userID", user.ID)
-	session.Save()
+	err = session.Save()
+	if err != nil {
+		ctx.String(http.StatusInternalServerError, "系统错误")
+		return
+	}
 	ctx.String(http.StatusOK, "登录成功")
 }
 func (u *UserHandler) SignUp(ctx *gin.Context) {
@@ -96,7 +101,7 @@ func (u *UserHandler) SignUp(ctx *gin.Context) {
 		Email:    req.Email,
 		Password: req.Password,
 	})
-	if err == service.ErrEmailDuplicated {
+	if errors.Is(err, service.ErrEmailDuplicated) {
 		ctx.String(http.StatusOK, "该邮箱已被注册，请重新输入邮箱")
 		return
 	}
