@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"time"
+	"webook/internal/domain"
 
 	"gorm.io/gorm"
 )
@@ -39,13 +40,21 @@ func (u *UserDetailDao) Create(ctx context.Context, id int64, nick string, intro
 	return nil
 
 }
-func (u *UserDetailDao) FindById(ctx context.Context, id int64) (UserDetail, error) {
+func (u *UserDetailDao) FindById(ctx context.Context, id int64) (domain.User, error) {
 	var ud UserDetail
 	row := u.db.WithContext(ctx).Where("user_id = ?", id).Preload("User").Find(&ud).RowsAffected
 	if row == 0 {
-		return ud, ErrDetailNotExist
+		return domain.User{}, ErrDetailNotExist
 	}
-	return ud, nil
+	return domain.User{
+		ID:           ud.UserID,
+		NickName:     ud.NickName,
+		Avatar:       ud.Avatar,
+		Introduction: ud.Introduction,
+		Birthday:     ud.Birthday,
+		Email:        ud.User.Email,
+		Password:     ud.User.Password,
+	}, nil
 }
 
 func (u *UserDetailDao) UpdateById(ctx context.Context, id int64, nick string, intro string, birthday string, avatar string) error {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"time"
+	"webook/internal/domain"
 
 	"github.com/go-sql-driver/mysql"
 	"gorm.io/gorm"
@@ -47,10 +48,13 @@ func (u *UserDao) FindByEmail(ctx context.Context, email string) (User, error) {
 	return user, err
 }
 
-func (u *UserDao) FindById(ctx context.Context, id int64) (User, error) {
+func (u *UserDao) FindById(ctx context.Context, id int64) (domain.User, error) {
 	var user User
 	err := u.db.WithContext(ctx).Where("id = ?", id).First(&user).Error
-	return user, err
+	return domain.User{
+		ID:    user.ID,
+		Email: user.Email,
+	}, err
 }
 
 type User struct {

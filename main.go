@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 	"webook/internal/repository"
+	"webook/internal/repository/cache"
 	"webook/internal/repository/dao"
 	"webook/internal/service"
 	"webook/internal/web"
@@ -17,24 +18,20 @@ import (
 )
 
 func main() {
-	server := InitServer()
-	db := InitDatabase()
+
+	db, cmd := InitDatabase()
+	server := InitServer(cmd)
 	dao.InitTables(db)
-	u := InitUser(db)
+	u := InitUser(db, cmd)
 
 	u.RegisterRoutes(server)
-	err := server.Run(":8180")
+	err := server.Run(":8080")
 	if err != nil {
 		panic(err)
 	}
-	//server := gin.Default()
-	//server.GET("/", func(context *gin.Context) {
-	//	context.String(http.StatusOK, "hello,k8s")
-	//})
-	//server.Run(":8180")
 }
 
-func InitServer() *gin.Engine {
+func InitServer(cmd redis.Cmdable) *gin.Engine {
 	server := gin.Default()
 	// 使用中间允许跨域
 	server.Use(cors.New(cors.Config{
@@ -59,27 +56,29 @@ func InitServer() *gin.Engine {
 	//server.Use(sessions.Sessions("mysession", store))
 	//server.Use(middleware.NewLoginMiddlewareBuilder().IgnorePath("/users/login", "/users/signup").Build())
 	server.Use(middleware.NewLoginJWTMiddlewareBuilder().IgnorePath("/users/login", "/users/signup").Build())
-	cmd := redis.NewClient(&redis.Options{
-		Addr:     "webook-redis:16379",
-		Password: "",
-		DB:       1,
-	})
+
 	// 接入限流中间件
 	server.Use(ratelimit.NewBuilder(cmd, time.Minute, 100).Build())
 	return server
 }
-func InitDatabase() *gorm.DB {
-	db, err := gorm.Open(mysql.Open("root:root@tcp(webook-mysql:13308)/webook"))
+func InitDatabase() (*gorm.DB, redis.Cmdable) {
+	db, err := gorm.Open(mysql.Open("root:root@tcp(localhost:13306)/webook"))
 	if err != nil {
 		panic(err)
 	}
-	return db.Debug()
+	cmd := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "",
+		DB:       1,
+	})
+	return db.Debug(), cmd
 }
-func InitUser(db *gorm.DB) *web.UserHandler {
+func InitUser(db *gorm.DB, cmd redis.Cmdable) *web.UserHandler {
 	ud := dao.NewUserDao(db)
 	udd := dao.NewUserDetailDao(db)
-	userRepo := repository.NewUserRepository(ud)
-	userDetailRepo := repository.NewUserDetailRepository(udd)
+	userCache := cache.NewUserCache(cmd)
+	userRepo := repository.NewUserRepository(ud, userCache)
+	userDetailRepo := repository.NewUserDetailRepository(udd, userCache)
 	svc := service.NewUserService(userRepo, userDetailRepo)
 	u := web.NewUserHandler(svc)
 	return u

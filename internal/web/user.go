@@ -71,7 +71,7 @@ func (u *UserHandler) Login(ctx *gin.Context) {
 		Uid:       user.ID,
 		UserAgent: ctx.Request.UserAgent(),
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute * 15)),
 		},
 	})
 	tokenStr, err := token.SignedString([]byte("xbcbtlzWUNZfXzmXvnLdpQnoIFRegaUK"))
@@ -154,7 +154,6 @@ func (u *UserHandler) Profile(ctx *gin.Context) {
 		Birthday:     user.Birthday,
 	}
 	ctx.JSON(http.StatusOK, resp)
-
 }
 func (u *UserHandler) Edit(ctx *gin.Context) {
 	type EditReq struct {

@@ -48,7 +48,7 @@ func (svc *UserService) SignUp(ctx context.Context, user domain.User) error {
 		return err
 	}
 	err = svc.repo.Create(ctx, user.Email, string(encrypted))
-	if err == repository.ErrEmailDuplicated {
+	if errors.Is(err, repository.ErrEmailDuplicated) {
 		return ErrEmailDuplicated
 	}
 	if err != nil {
@@ -59,7 +59,7 @@ func (svc *UserService) SignUp(ctx context.Context, user domain.User) error {
 
 func (svc *UserService) Edit(ctx context.Context, u domain.User) error {
 	_, err := svc.detailRepo.FindById(ctx, u.ID)
-	if err == ErrDetailNotExist {
+	if errors.Is(err, ErrDetailNotExist) {
 		err = svc.detailRepo.Create(ctx, u)
 		return err
 	}
@@ -72,8 +72,11 @@ func (svc *UserService) Edit(ctx context.Context, u domain.User) error {
 
 func (svc *UserService) Profile(ctx context.Context, id int64) (domain.User, error) {
 	user, err := svc.detailRepo.FindById(ctx, id)
-	if err == ErrDetailNotExist {
+	if errors.Is(err, ErrDetailNotExist) {
 		user, err = svc.repo.FindById(ctx, id)
+		if err == nil {
+			_ = svc.detailRepo.Create(ctx, user)
+		}
 		return user, err
 	}
 	if err != nil {
