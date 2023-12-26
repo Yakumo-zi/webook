@@ -13,14 +13,14 @@ import (
 )
 
 type UserHandler struct {
-	svc            *service.UserService
+	svc            service.UserService
 	emailRegexp    *regex.Regexp
 	passwordRegexp *regex.Regexp
 	userRegexp     *regex.Regexp
 	dateRegexp     *regex.Regexp
 }
 
-func NewUserHandler(svc *service.UserService) *UserHandler {
+func NewUserHandler(svc service.UserService) *UserHandler {
 	emailRegexp := regex.MustCompile("^[a-zA-Z0-9_.-]+@[a-zA-Z0-9-]+(\\.[a-zA-Z0-9-]+)*\\.[a-zA-Z0-9]{2,6}$", 0)
 	passwordRegexp := regex.MustCompile("^(?=.*\\d)(?=.*[a-zA-Z])(?=.*[^\\da-zA-Z\\s]).{6,18}$", 0)
 	userRegexp := regex.MustCompile(`^[a-zA-Z0-9_-]{6,12}$`, 0)

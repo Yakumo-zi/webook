@@ -14,17 +14,22 @@ var (
 	ErrDetailNotExist = errors.New("详情不存在")
 )
 
-type UserDetailDao struct {
+type UserDetailDao interface {
+	Create(ctx context.Context, id int64, nick string, intro string, birthday string) error
+	FindById(ctx context.Context, id int64) (domain.User, error)
+	UpdateById(ctx context.Context, id int64, nick string, intro string, birthday string, avatar string) error
+}
+type userDetailDao struct {
 	db *gorm.DB
 }
 
-func NewUserDetailDao(db *gorm.DB) *UserDetailDao {
-	return &UserDetailDao{
+func NewUserDetailDao(db *gorm.DB) UserDetailDao {
+	return &userDetailDao{
 		db: db,
 	}
 }
 
-func (u *UserDetailDao) Create(ctx context.Context, id int64, nick string, intro string, birthday string) error {
+func (u *userDetailDao) Create(ctx context.Context, id int64, nick string, intro string, birthday string) error {
 	now := time.Now().UnixMilli()
 	err := u.db.WithContext(ctx).Create(&UserDetail{
 		UserID:       id,
@@ -40,7 +45,7 @@ func (u *UserDetailDao) Create(ctx context.Context, id int64, nick string, intro
 	return nil
 
 }
-func (u *UserDetailDao) FindById(ctx context.Context, id int64) (domain.User, error) {
+func (u *userDetailDao) FindById(ctx context.Context, id int64) (domain.User, error) {
 	var ud UserDetail
 	row := u.db.WithContext(ctx).Where("user_id = ?", id).Preload("User").Find(&ud).RowsAffected
 	if row == 0 {
@@ -57,7 +62,7 @@ func (u *UserDetailDao) FindById(ctx context.Context, id int64) (domain.User, er
 	}, nil
 }
 
-func (u *UserDetailDao) UpdateById(ctx context.Context, id int64, nick string, intro string, birthday string, avatar string) error {
+func (u *userDetailDao) UpdateById(ctx context.Context, id int64, nick string, intro string, birthday string, avatar string) error {
 	now := time.Now().UnixMilli()
 	detail := UserDetail{
 		NickName:     nick,

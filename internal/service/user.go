@@ -15,19 +15,25 @@ var (
 	ErrDetailNotExist  = repository.ErrDetailNotExist
 )
 
-type UserService struct {
-	repo       *repository.UserRepository
-	detailRepo *repository.UserDetailRepository
+type UserService interface {
+	Login(ctx context.Context, email string, password string) (domain.User, error)
+	SignUp(ctx context.Context, user domain.User) error
+	Edit(ctx context.Context, u domain.User) error
+	Profile(ctx context.Context, id int64) (domain.User, error)
+}
+type userService struct {
+	repo       repository.UserRepository
+	detailRepo repository.UserDetailRepository
 }
 
-func NewUserService(userRepo *repository.UserRepository, userDetailRepo *repository.UserDetailRepository) *UserService {
-	return &UserService{
+func NewUserService(userRepo repository.UserRepository, userDetailRepo repository.UserDetailRepository) UserService {
+	return &userService{
 		repo:       userRepo,
 		detailRepo: userDetailRepo,
 	}
 
 }
-func (svc *UserService) Login(ctx context.Context, email string, password string) (domain.User, error) {
+func (svc *userService) Login(ctx context.Context, email string, password string) (domain.User, error) {
 	user, err := svc.repo.FindByEmail(ctx, email)
 	if err != nil {
 		return domain.User{}, ErrEmailOrPassword
@@ -42,7 +48,7 @@ func (svc *UserService) Login(ctx context.Context, email string, password string
 	}, nil
 }
 
-func (svc *UserService) SignUp(ctx context.Context, user domain.User) error {
+func (svc *userService) SignUp(ctx context.Context, user domain.User) error {
 	encrypted, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return err
@@ -57,7 +63,7 @@ func (svc *UserService) SignUp(ctx context.Context, user domain.User) error {
 	return nil
 }
 
-func (svc *UserService) Edit(ctx context.Context, u domain.User) error {
+func (svc *userService) Edit(ctx context.Context, u domain.User) error {
 	_, err := svc.detailRepo.FindById(ctx, u.ID)
 	if errors.Is(err, ErrDetailNotExist) {
 		err = svc.detailRepo.Create(ctx, u)
@@ -70,7 +76,7 @@ func (svc *UserService) Edit(ctx context.Context, u domain.User) error {
 	return nil
 }
 
-func (svc *UserService) Profile(ctx context.Context, id int64) (domain.User, error) {
+func (svc *userService) Profile(ctx context.Context, id int64) (domain.User, error) {
 	user, err := svc.detailRepo.FindById(ctx, id)
 	if errors.Is(err, ErrDetailNotExist) {
 		user, err = svc.repo.FindById(ctx, id)

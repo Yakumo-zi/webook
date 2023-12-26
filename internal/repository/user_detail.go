@@ -14,19 +14,24 @@ var (
 	ErrDetailNotExist = dao.ErrDetailNotExist
 )
 
-type UserDetailRepository struct {
-	dao   *dao.UserDetailDao
-	cache *cache.UserCache
+type UserDetailRepository interface {
+	Create(ctx context.Context, ud domain.User) error
+	FindById(ctx context.Context, id int64) (domain.User, error)
+	UpdateById(ctx context.Context, user domain.User) error
+}
+type userDetailRepository struct {
+	dao   dao.UserDetailDao
+	cache cache.UserCache
 }
 
-func NewUserDetailRepository(dao *dao.UserDetailDao, cache *cache.UserCache) *UserDetailRepository {
-	return &UserDetailRepository{
+func NewUserDetailRepository(dao dao.UserDetailDao, cache cache.UserCache) UserDetailRepository {
+	return &userDetailRepository{
 		dao:   dao,
 		cache: cache,
 	}
 }
 
-func (u *UserDetailRepository) Create(ctx context.Context, ud domain.User) error {
+func (u *userDetailRepository) Create(ctx context.Context, ud domain.User) error {
 	err := u.dao.Create(ctx, ud.ID, ud.NickName, ud.Introduction, ud.Birthday)
 	if err != nil {
 		if me, ok := err.(*mysql.MySQLError); ok {
@@ -39,7 +44,7 @@ func (u *UserDetailRepository) Create(ctx context.Context, ud domain.User) error
 	return nil
 }
 
-func (u *UserDetailRepository) FindById(ctx context.Context, id int64) (domain.User, error) {
+func (u *userDetailRepository) FindById(ctx context.Context, id int64) (domain.User, error) {
 	detail, err := u.cache.Get(ctx, int(id))
 	if err == nil {
 		return detail, err
@@ -57,7 +62,7 @@ func (u *UserDetailRepository) FindById(ctx context.Context, id int64) (domain.U
 	return detail, nil
 }
 
-func (u *UserDetailRepository) UpdateById(ctx context.Context, user domain.User) error {
+func (u *userDetailRepository) UpdateById(ctx context.Context, user domain.User) error {
 	err := u.dao.UpdateById(ctx, user.ID, user.NickName, user.Introduction, user.Birthday, user.Avatar)
 	if err != nil {
 		return err

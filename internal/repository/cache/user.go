@@ -9,20 +9,26 @@ import (
 	"webook/internal/domain"
 )
 
-type UserCache struct {
+type UserCache interface {
+	Get(ctx context.Context, id int) (domain.User, error)
+	Set(ctx context.Context, du domain.User) error
+	Del(ctx context.Context, id int) error
+}
+
+type userCache struct {
 	cmd redis.Cmdable
 }
 
-func NewUserCache(cmd redis.Cmdable) *UserCache {
-	return &UserCache{
+func NewUserCache(cmd redis.Cmdable) UserCache {
+	return &userCache{
 		cmd: cmd,
 	}
 }
-func (u *UserCache) generateKey(id int) string {
+func (u *userCache) generateKey(id int) string {
 	return fmt.Sprintf("user:info:%d", id)
 }
 
-func (u *UserCache) Get(ctx context.Context, id int) (domain.User, error) {
+func (u *userCache) Get(ctx context.Context, id int) (domain.User, error) {
 	var user domain.User
 	res := u.cmd.Get(ctx, u.generateKey(id))
 	data, err := res.Result()
@@ -32,7 +38,7 @@ func (u *UserCache) Get(ctx context.Context, id int) (domain.User, error) {
 	err = json.Unmarshal([]byte(data), &user)
 	return user, err
 }
-func (u *UserCache) Set(ctx context.Context, du domain.User) error {
+func (u *userCache) Set(ctx context.Context, du domain.User) error {
 	ru, err := json.Marshal(du)
 	if err != nil {
 		return err
@@ -40,6 +46,6 @@ func (u *UserCache) Set(ctx context.Context, du domain.User) error {
 	return u.cmd.Set(ctx, u.generateKey(int(du.ID)), ru, time.Hour*24).Err()
 }
 
-func (u *UserCache) Del(ctx context.Context, id int) error {
+func (u *userCache) Del(ctx context.Context, id int) error {
 	return u.cmd.Del(ctx, u.generateKey(id)).Err()
 }

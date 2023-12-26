@@ -14,16 +14,21 @@ var (
 	ErrEmailDuplicated = errors.New("邮箱重复")
 )
 
-type UserDao struct {
+type UserDao interface {
+	Create(ctx context.Context, email string, password string) error
+	FindByEmail(ctx context.Context, email string) (domain.User, error)
+	FindById(ctx context.Context, id int64) (domain.User, error)
+}
+type userDao struct {
 	db *gorm.DB
 }
 
-func NewUserDao(db *gorm.DB) *UserDao {
-	return &UserDao{
+func NewUserDao(db *gorm.DB) UserDao {
+	return &userDao{
 		db: db,
 	}
 }
-func (u *UserDao) Create(ctx context.Context, email string, password string) error {
+func (u *userDao) Create(ctx context.Context, email string, password string) error {
 	now := time.Now().UnixMilli()
 	err := u.db.WithContext(ctx).Create(&User{
 		Email:    email,
@@ -42,13 +47,17 @@ func (u *UserDao) Create(ctx context.Context, email string, password string) err
 	}
 	return nil
 }
-func (u *UserDao) FindByEmail(ctx context.Context, email string) (User, error) {
+func (u *userDao) FindByEmail(ctx context.Context, email string) (domain.User, error) {
 	var user User
 	err := u.db.WithContext(ctx).Where("email = ?", email).First(&user).Error
-	return user, err
+	return domain.User{
+		ID:       user.ID,
+		Email:    user.Email,
+		Password: user.Password,
+	}, err
 }
 
-func (u *UserDao) FindById(ctx context.Context, id int64) (domain.User, error) {
+func (u *userDao) FindById(ctx context.Context, id int64) (domain.User, error) {
 	var user User
 	err := u.db.WithContext(ctx).Where("id = ?", id).First(&user).Error
 	return domain.User{

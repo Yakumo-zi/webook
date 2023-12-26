@@ -12,18 +12,24 @@ var (
 	ErrEmailDuplicated = dao.ErrEmailDuplicated
 )
 
-type UserRepository struct {
-	dao   *dao.UserDao
-	cache *cache.UserCache
+type UserRepository interface {
+	Create(ctx context.Context, email string, password string) error
+	FindByEmail(ctx context.Context, email string) (domain.User, error)
+	FindById(ctx context.Context, id int64) (domain.User, error)
 }
 
-func NewUserRepository(dao *dao.UserDao, cache *cache.UserCache) *UserRepository {
-	return &UserRepository{
+type UserRepositoryI struct {
+	dao   dao.UserDao
+	cache cache.UserCache
+}
+
+func NewUserRepository(dao dao.UserDao, cache cache.UserCache) UserRepository {
+	return &UserRepositoryI{
 		dao:   dao,
 		cache: cache,
 	}
 }
-func (u *UserRepository) Create(ctx context.Context, email string, password string) error {
+func (u *UserRepositoryI) Create(ctx context.Context, email string, password string) error {
 	err := u.dao.Create(ctx, email, password)
 	if errors.Is(err, ErrEmailDuplicated) {
 		return err
@@ -33,19 +39,15 @@ func (u *UserRepository) Create(ctx context.Context, email string, password stri
 	}
 	return nil
 }
-func (u *UserRepository) FindByEmail(ctx context.Context, email string) (domain.User, error) {
+func (u *UserRepositoryI) FindByEmail(ctx context.Context, email string) (domain.User, error) {
 	user, err := u.dao.FindByEmail(ctx, email)
 	if err != nil {
 		return domain.User{}, err
 	}
-	return domain.User{
-		ID:       user.ID,
-		Email:    user.Email,
-		Password: user.Password,
-	}, nil
+	return user, nil
 }
 
-func (u *UserRepository) FindById(ctx context.Context, id int64) (domain.User, error) {
+func (u *UserRepositoryI) FindById(ctx context.Context, id int64) (domain.User, error) {
 	user, err := u.cache.Get(ctx, int(id))
 	if err == nil {
 		return user, err
