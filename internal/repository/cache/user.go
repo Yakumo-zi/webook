@@ -39,3 +39,7 @@ func (u *UserCache) Set(ctx context.Context, du domain.User) error {
 	}
 	return u.cmd.Set(ctx, u.generateKey(int(du.ID)), ru, time.Hour*24).Err()
 }
+
+func (u *UserCache) Del(ctx context.Context, id int) error {
+	return u.cmd.Del(ctx, u.generateKey(id)).Err()
+}

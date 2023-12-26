@@ -62,6 +62,6 @@ func (u *UserDetailRepository) UpdateById(ctx context.Context, user domain.User)
 	if err != nil {
 		return err
 	}
-	_ = u.cache.Set(ctx, user)
+	_ = u.cache.Del(ctx, int(user.ID))
 	return err
 }
